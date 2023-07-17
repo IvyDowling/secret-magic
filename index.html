@@ -1,0 +1,83 @@
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"
+        integrity="sha256-oP6HI9z1XaZNBrJURtCoUT5SUnxFr8s3BzRl+cbzUq8=" crossorigin="anonymous"></script>
+    <script language="javascript" type="text/javascript" src="color.js"></script>
+</head>
+<style>
+    body {
+        background-color: white;
+        font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+    }
+
+    output {
+        width: 100%;
+        min-height: 150px;
+        display: flex;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        gap: 15px;
+        position: relative;
+        border-radius: 5px;
+    }
+
+    output .image {
+        height: 150px;
+        border-radius: 5px;
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.15);
+        overflow: hidden;
+        position: relative;
+    }
+
+    output .image img {
+        height: 100%;
+        width: 100%;
+    }
+
+    output .image span {
+        position: absolute;
+        top: -4px;
+        right: 4px;
+        cursor: pointer;
+        font-size: 22px;
+        color: white;
+    }
+
+    output .image span:hover {
+        opacity: 0.8;
+    }
+
+    output .span--hidden {
+        visibility: hidden;
+    }
+</style>
+<div>
+    <p>Here's where the colors go</p>
+    <button type="button" onclick="loadSample1()">sample1</button>
+    <button type="button" onclick="loadSample2()">sample2</button>
+    <button type="button" onclick="loadSample3()">sample3</button>
+    <button type="button" onclick="loadRandom()">rand</button> 
+    <button type="button" onclick="loadInputImg()">load input img</button> 
+    <button type="button" onclick="loadResultImg()">go again</button> 
+    <button type="button" onclick="recurse(10)">go ten times</button> 
+    <button type="button" onclick="animateGoGo(1000)">1000</button> 
+    <br>
+    <button type="button" onclick="photoGoGo()">photo go go</button>
+    <br>
+    <br>
+    <div id="colorDivId">
+        <canvas id="canvasId"> </canvas>
+    </div>
+    <br>
+    <p>output:</p>
+    <div id="newImgDivId">
+        <canvas id="newCanvasId" > </canvas>
+    </div>
+</div>
+<input type="file" accept="image/jpeg, image/png, image/jpg">
+<output></output>
+</body>
+
+</html>
