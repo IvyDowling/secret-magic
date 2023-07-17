@@ -135,8 +135,8 @@ function animateGoGo(i){
     for(let r = 0; r <= i; r++){
         setTimeout(() => {
             photoGoGo();
+            loadResultImg()
         }, 500);
-        loadResultImg()
     }
 }
 
@@ -200,9 +200,13 @@ function photoGoGo() {
                 i = p + w + 1;
                 break;
         }
-        // NEGATIVE ARRAY INDEX WRAP
+        // Y-axis NEGATIVE ARRAY INDEX WRAP
         if (i < 0) {
             i = w * h + i
+        }
+        // x-axis wrap
+        if(p == canvas.width & (i == p + w + 1 | i == p + 1 | i == p - w + 1)){
+            i = i - w
         }
         //
         // we have the new vector direction, now compute payload
