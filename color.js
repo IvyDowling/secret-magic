@@ -63,6 +63,7 @@ function loadSample3() {
     const dim = 64
     const scale = dim * dim * 4
     const canvas = document.getElementById("canvasId");
+    canvas.height = canvas.width = dim;
     const ctx = canvas.getContext("2d");
     const imageData = ctx.createImageData(dim, dim);
 
@@ -116,7 +117,7 @@ function loadResultImg() {
     var newCanvas = document.getElementById("newCanvasId");
     var ctx = canvas.getContext("2d");
     var newCtx = newCanvas.getContext("2d");
-    let newImg = newCtx.getImageData(0,0, newCanvas.width, newCanvas.height)
+    let newImg = newCtx.getImageData(0, 0, newCanvas.width, newCanvas.height)
     ctx.putImageData(newImg, 0, 0);
     // clear canvas
     for (let i = 0; i < newCanvas.width * newCanvas.height; i++) {
@@ -124,19 +125,19 @@ function loadResultImg() {
     }
 }
 
-function recurse(i){
-    for(let r = 0; r <= i; r++){
+function recurse(i) {
+    for (let r = 0; r <= i; r++) {
         photoGoGo();
         loadResultImg()
     }
 }
 
-function animateGoGo(i){
-    for(let r = 0; r <= i; r++){
+function animateGoGo(i) {
+    for (let r = 0; r <= i; r++) {
         setTimeout(() => {
             photoGoGo();
             loadResultImg()
-        }, 500);
+        }, 200);
     }
 }
 
@@ -156,10 +157,11 @@ function photoGoGo() {
     var newCtx = newCanvas.getContext("2d");
     const newImageData = newCtx.createImageData(canvas.width, canvas.height);
 
-    const w = (canvas.width * 4) // this is the array index chunk w
+    const chunk = 4
+    const w = (canvas.width * chunk) // this is the array index chunk w
     const h = canvas.height
 
-    for (let p = 0; p < w*h; p += 4) {
+    for (let p = 0; p < w * h; p += chunk) {
         let pixel = data.slice(p, p + 3)
         // creating a vector from each pixel
         // direction comes from the leftmost op-bits
@@ -176,36 +178,49 @@ function photoGoGo() {
         let dataB = dataFromDec(pixel[2])
         let d = '' + opR.charAt(0) + opG.charAt(0) + opB.charAt(0)
         let i = p
-        // if (d == '000')  i=p // do nothing
+        
         switch (d) {
-            case '001':
-                i = p - w - 1;
+            case '000':
+                i = p - w - chunk;
                 break;
-            case '010':
+            case '001':
                 i = p - w;
                 break;
+            case '010':
+                i = p - w + chunk;
+                break;
             case '011':
-                i = p - w + 1;
+                i = p - chunk;
                 break;
             case '100':
-                i = p - 1;
+                i = p + chunk;
                 break;
             case '101':
-                i = p + 1;
+                i = p + w - chunk;
                 break;
             case '110':
-                i = p + w - 1;
+                i = p + w
                 break;
             case '111':
-                i = p + w + 1;
+                i = p + w + chunk;
                 break;
         }
         // Y-axis NEGATIVE ARRAY INDEX WRAP
         if (i < 0) {
+            console.log("y axis wrap min:: i:" + i + " < 0, i = " + w * h + " + " + i + " = "+ (w * h + i))
             i = w * h + i
         }
+        if (i >= w * h) {
+            console.log("y axis wrap max:: i:" + i + " >= " + (w * h) + ", i =" + (i % (w * h)))
+            i = i % (w * h)
+        }
         // x-axis wrap
-        if(p == canvas.width & (i == p + w + 1 | i == p + 1 | i == p - w + 1)){
+        if (p % w == 0 & (d = '110' | d == '100' | d == '001')) {
+            console.log("x axis wrap positive:: " + " w=width= " + w + " i:" + i + " w " + w + " => " + (i + w))
+            i = i + w
+        }
+        if (p % w == w - 1 & (d == '111' | d == '011' | d == '101')) {
+            console.log("x axis wrap negative:: " + " w=width= " + w + " i:" + i + " w " + w + " => " + (i - w))
             i = i - w
         }
         //
@@ -213,25 +228,25 @@ function photoGoGo() {
         //
         let payloadR = dataR
         let operationR = '' + opR.charAt(2) + opR.charAt(3)
-        
+
         let payloadG = dataG
         let operationG = '' + opG.charAt(2) + opG.charAt(3)
-        
+
         let payloadB = dataB
         let operationB = '' + opB.charAt(2) + opB.charAt(3)
         // R
-        // if(operation == '11') payload = data // do nothing
         switch (operationR) {
             case '11':
                 // NOT
                 let notPR = ''
-                for (const b in payloadR) {
-                    if (b == '0')
+                for (let b = 0; b < 4; b++) {
+                    if (payloadR.charAt(b) == '0') {
                         notPR += '1'
-                    else {
+                    } else {
                         notPR += '0'
                     }
                 }
+                payloadR = notPR
                 break;
             case '01':
                 // OR
@@ -239,18 +254,18 @@ function photoGoGo() {
                 if (opR.charAt(1) == '0') {
                     // OR RED WITH BLUE
                     for (let d = 0; d < 4; d++) {
-                        if (payloadR.charAt(d) == '1' | payloadB.charAt(d) == '1')
+                        if (payloadR.charAt(d) == '1' | payloadB.charAt(d) == '1') {
                             orPR += '1'
-                        else {
+                        } else {
                             orPR += '0'
                         }
                     }
                 } else {
                     // OR RED WITH GREEN
                     for (let d = 0; d < 4; d++) {
-                        if (payloadR.charAt(d) == '1' | payloadG.charAt(d) == '1')
+                        if (payloadR.charAt(d) == '1' | payloadG.charAt(d) == '1') {
                             orPR += '1'
-                        else {
+                        } else {
                             orPR += '0'
                         }
                     }
@@ -263,18 +278,18 @@ function photoGoGo() {
                 if (opR.charAt(1) == '0') {
                     // AND RED WITH BLUE
                     for (let d = 0; d < 4; d++) {
-                        if (payloadR.charAt(d) == '1' & payloadB.charAt(d) == '1')
+                        if (payloadR.charAt(d) == '1' & payloadB.charAt(d) == '1') {
                             andPr += '1'
-                        else {
+                        } else {
                             andPr += '0'
                         }
                     }
                 } else {
                     // AND RED WITH GREEN
                     for (let d = 0; d < 4; d++) {
-                        if (payloadR.charAt(d) == '1' & payloadG.charAt(d) == '1')
+                        if (payloadR.charAt(d) == '1' & payloadG.charAt(d) == '1') {
                             andPr += '1'
-                        else {
+                        } else {
                             andPr += '0'
                         }
                     }
@@ -286,38 +301,39 @@ function photoGoGo() {
         switch (operationG) {
             case '11':
                 // NOT
-                let notPR = ''
-                for (const b in payloadG) {
-                    if (b == '0')
-                        notPR += '1'
-                    else {
-                        notPR += '0'
+                let notPG = ''
+                for (let b = 0; b < 4; b++) {
+                    if (payloadG.charAt(b) == '0') {
+                        notPG += '1'
+                    } else {
+                        notPG += '0'
                     }
                 }
+                payloadG = notPG
                 break;
             case '01':
                 // OR
-                let orPR = ''
+                let orPG = ''
                 if (opG.charAt(1) == '0') {
                     // OR GREEN WITH RED
                     for (let d = 0; d < 4; d++) {
-                        if (payloadG.charAt(d) == '1' | payloadR.charAt(d) == '1')
-                            orPR += '1'
-                        else {
-                            orPR += '0'
+                        if (payloadG.charAt(d) == '1' | payloadR.charAt(d) == '1') {
+                            orPG += '1'
+                        } else {
+                            orPG += '0'
                         }
                     }
                 } else {
                     // OR GREEN WITH BLUE
                     for (let d = 0; d < 4; d++) {
-                        if (payloadG.charAt(d) == '1' | payloadB.charAt(d) == '1')
-                            orPR += '1'
-                        else {
-                            orPR += '0'
+                        if (payloadG.charAt(d) == '1' | payloadB.charAt(d) == '1') {
+                            orPG += '1'
+                        } else {
+                            orPG += '0'
                         }
                     }
                 }
-                payloadG = orPR
+                payloadG = orPG
                 break;
             case '10':
                 // AND
@@ -325,18 +341,18 @@ function photoGoGo() {
                 if (opG.charAt(1) == '0') {
                     // AND GREEN WITH RED
                     for (let d = 0; d < 4; d++) {
-                        if (payloadG.charAt(d) == '1' & payloadR.charAt(d) == '1')
+                        if (payloadG.charAt(d) == '1' & payloadR.charAt(d) == '1') {
                             andPr += '1'
-                        else {
+                        } else {
                             andPr += '0'
                         }
                     }
                 } else {
                     // AND GREEN WITH BLUE
                     for (let d = 0; d < 4; d++) {
-                        if (payloadG.charAt(d) == '1' & payloadB.charAt(d) == '1')
+                        if (payloadG.charAt(d) == '1' & payloadB.charAt(d) == '1') {
                             andPr += '1'
-                        else {
+                        } else {
                             andPr += '0'
                         }
                     }
@@ -348,14 +364,15 @@ function photoGoGo() {
         switch (operationB) {
             case '11':
                 // NOT
-                let notPR = ''
-                for (const b in payloadB) {
-                    if (b == '0')
-                        notPR += '1'
-                    else {
-                        notPR += '0'
+                let notPB = ''
+                for (let b = 0; b < 4; b++) {
+                    if (payloadB.charAt(b) == '0') {
+                        notPB += '1'
+                    } else {
+                        notPB += '0'
                     }
                 }
+                payloadB = notPB
                 break;
             case '01':
                 // OR
@@ -363,18 +380,18 @@ function photoGoGo() {
                 if (opB.charAt(1) == '0') {
                     // OR BLUE WITH GREEN
                     for (let d = 0; d < 4; d++) {
-                        if (payloadB.charAt(d) == '1' | payloadG.charAt(d) == '1')
+                        if (payloadB.charAt(d) == '1' | payloadG.charAt(d) == '1') {
                             orPR += '1'
-                        else {
+                        } else {
                             orPR += '0'
                         }
                     }
                 } else {
                     // OR BLUE WITH RED
                     for (let d = 0; d < 4; d++) {
-                        if (payloadB.charAt(d) == '1' | payloadR.charAt(d) == '1')
+                        if (payloadB.charAt(d) == '1' | payloadR.charAt(d) == '1') {
                             orPR += '1'
-                        else {
+                        } else {
                             orPR += '0'
                         }
                     }
@@ -387,18 +404,18 @@ function photoGoGo() {
                 if (opB.charAt(1) == '0') {
                     // AND BLUE WITH GREEN
                     for (let d = 0; d < 4; d++) {
-                        if (payloadB.charAt(d) == '1' & payloadG.charAt(d) == '1')
+                        if (payloadB.charAt(d) == '1' & payloadG.charAt(d) == '1') {
                             andPr += '1'
-                        else {
+                        } else {
                             andPr += '0'
                         }
                     }
                 } else {
                     // AND BLUE WITH RED
                     for (let d = 0; d < 4; d++) {
-                        if (payloadB.charAt(d) == '1' & payloadR.charAt(d) == '1')
+                        if (payloadB.charAt(d) == '1' & payloadR.charAt(d) == '1') {
                             andPr += '1'
-                        else {
+                        } else {
                             andPr += '0'
                         }
                     }
@@ -407,23 +424,60 @@ function photoGoGo() {
                 break;
         }
         // assembling the payloads is as follows,
-        // (r,g,b) = (pR.pG , pG.pB , pB.pR)
-        let newR = payloadR.concat(payloadG)
-        let newG = payloadG.concat(payloadB)
-        let newB = payloadB.concat(payloadR)
+        // (r,g,b) = (pR.pR , pG.pG , pB.pB)
+        let newBinR = payloadR.concat(payloadB)
+        let newBinG = payloadB.concat(payloadG)
+        let newBinB = payloadG.concat(payloadR)
         //
         // ASSIGN NEW PIXEL AT NEW INDEX
         //
-        newImageData.data[i] += newR;
-        newImageData.data[i+1] += newG;
-        newImageData.data[i+2] += newB;
-        newImageData.data[i+3] = 255; // alpha
+        let decR = parseInt(newBinR, 2)
+        let decG = parseInt(newBinG, 2)
+        let decB = parseInt(newBinB, 2)
+        // overflow 255
+        let oldDecR = parseInt(newImageData.data[i], 2)
+        let oldDecG = parseInt(newImageData.data[i + 1], 2)
+        let oldDecB = parseInt(newImageData.data[i + 2], 2)
+        if (oldDecR + decR > 255) {
+            newImageData.data[i] = oldDecR + decR - 256
+            console.log("overflow r: " + (oldDecR + decR) + "=>" + parseInt(newImageData.data[i], 2))
+        } else {
+            newImageData.data[i] += decR
+        }
+
+        if (oldDecG + decG > 255) {
+            newImageData.data[i + 1] = oldDecG + decG - 256
+            console.log("overflow g: " + (oldDecG + decG) + "=>" + parseInt(newImageData.data[i + 1], 2))
+        } else {
+            newImageData.data[i + 1] += decG
+        }
+
+        if (oldDecB + decB > 255) {
+            newImageData.data[i + 2] = oldDecB + decB - 256
+            console.log("overflow b: " + (oldDecB + decB) + "=>" + parseInt(newImageData.data[i + 2], 2))
+        } else {
+            newImageData.data[i + 2] += decB
+        }
+        newImageData.data[i + 3] = 255; // alpha
+        // LOGGING
+        // if (p == 1600) {
+        //     console.log("p = " + p)
+        //     console.log("INPUT")
+        //     console.log("pixel: (" + dec2bin(pixel[0]) + ", " + dec2bin(pixel[1]) + ", " + dec2bin(pixel[2]) + ")")
+        //     console.log("RESULT")
+        //     console.log("direction: " + d)
+        //     console.log("i = " + i)
+        //     console.log("ops:: " + "R: " + operationR + ", G: " + operationG + ", B: " + operationB)
+        //     console.log("payload: (" + newR + ", " + newG + ", " + newB + ")")
+        // }
     }
-    newCtx.putImageData(newImageData,0,0)
+    newCtx.putImageData(newImageData, 0, 0)
 }
 
 function dec2bin(dec) {
-    return (dec >>> 0).toString(2);
+    let b = (dec >>> 0).toString(2);
+    while (b.length < 8) b = '0' + b;
+    return b
 }
 
 function opFromDec(dec) {
