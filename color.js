@@ -60,7 +60,7 @@ function loadSample2() {
 }
 
 function loadSample3() {
-    const dim = 64
+    const dim = 256
     const scale = dim * dim * 4
     const canvas = document.getElementById("canvasId");
     canvas.height = canvas.width = dim;
@@ -87,7 +87,7 @@ function getRandomInt(max) {
 }
 
 function loadRandom() {
-    const dim = 64
+    const dim = 128
     const scale = dim * dim * 4
     var canvas = document.getElementById("canvasId");
     canvas.height = canvas.width = dim;
@@ -155,6 +155,8 @@ function photoGoGo() {
     // create new image
     var newCanvas = document.getElementById("newCanvasId");
     var newCtx = newCanvas.getContext("2d");
+    newCanvas.width = canvas.width
+    newCanvas.height = canvas.height
     const newImageData = newCtx.createImageData(canvas.width, canvas.height);
 
     const chunk = 4
@@ -164,21 +166,26 @@ function photoGoGo() {
     for (let p = 0; p < w * h; p += chunk) {
         let pixel = data.slice(p, p + 3)
         // creating a vector from each pixel
-        // direction comes from the leftmost op-bits
+        // direction comes from the least significant bits
         //  1..2..3     p-w-1   p-w     p-w+1
         //  4..0..5     p-1     p       p+1
         //  6..7..8     p+w-1   p+w     p+w+1
         // console.log(p)
         // op and data are 2, left 0 buffered, bytes
-        let opR = opFromDec(pixel[0])
-        let dataR = dataFromDec(pixel[0])
-        let opG = opFromDec(pixel[1])
-        let dataG = dataFromDec(pixel[1])
-        let opB = opFromDec(pixel[2])
-        let dataB = dataFromDec(pixel[2])
-        let d = '' + opR.charAt(0) + opG.charAt(0) + opB.charAt(0)
+
+        // if ((pixel[0] == pixel[1] & pixel[0] == pixel[2] & pixel[0] == 255) | (pixel[0] == pixel[1] & pixel[0] == pixel[2] & pixel[0] == 0)) {
+        //     pixel[0] = 127
+        //     pixel[1] = 127
+        //     pixel[2] = 127
+        // }
+
+        let pRbin = dec2bin(pixel[0])
+        let pGbin = dec2bin(pixel[1])
+        let pBbin = dec2bin(pixel[2])
+
+        let d = '' + pRbin.charAt(7) + pGbin.charAt(7) + pBbin.charAt(7)
         let i = p
-        
+
         switch (d) {
             case '000':
                 i = p - w - chunk;
@@ -207,20 +214,211 @@ function photoGoGo() {
         }
         // Y-axis NEGATIVE ARRAY INDEX WRAP
         if (i < 0) {
-            console.log("y axis wrap min:: i:" + i + " < 0, i = " + w * h + " + " + i + " = "+ (w * h + i))
-            i = w * h + i
+            // check diagonals before reassignment
+            if (i == w - chunk) {
+                // top left -> bottom right
+                i = w * h - chunk
+            } else if (i == (w - chunk) - (w + chunk)) {
+                // top right -> bottom left
+                i = w * (h - 1)
+            } else {
+                // console.log("y axis wrap min:: i:" + i + " < 0, i = " + w * h + " + " + i + " = "+ (w * h + i))
+                i = w * h + i
+            }
         }
         if (i >= w * h) {
-            console.log("y axis wrap max:: i:" + i + " >= " + (w * h) + ", i =" + (i % (w * h)))
-            i = i % (w * h)
+            // check diagonals before reassignment
+            if (i == w * h) {
+                // bottom left -> top right
+                i = w
+            } else if (i == w * h + (w - chunk)) {
+                // bottom right -> top left
+                i = 0
+            } else {
+                // console.log("y axis wrap max:: i:" + i + " >= " + (w * h) + ", i =(" + i + "-" + (w*h) + ")=" + (i - (w * h)))
+                i = i - (w * h)
+            }
         }
         // x-axis wrap
-        if (p % w == 0 & (d = '110' | d == '100' | d == '001')) {
-            console.log("x axis wrap positive:: " + " w=width= " + w + " i:" + i + " w " + w + " => " + (i + w))
+        if (p % w == 0 & (i % w > p % w)) {
+            // console.log("x axis wrap left:: i:" + i + " w " + w + " => " + (i + w))
             i = i + w
         }
-        if (p % w == w - 1 & (d == '111' | d == '011' | d == '101')) {
-            console.log("x axis wrap negative:: " + " w=width= " + w + " i:" + i + " w " + w + " => " + (i - w))
+        if (p % w == w - chunk & (i % w < p % w)) {
+            // console.log("x axis wrap right:: i:" + i + " w " + w + " => " + (i - w))
+            i = i - w
+        }
+        //
+        // we have the new vector direction, now compute payload
+        //
+        // for this one, lets play with other bin ops
+        // bit shift each r,g,b
+
+        // let newBinR = bitReverse(pRbin)
+        // let newBinG = bitReverse(pGbin)
+        // let newBinB = bitReverse(pBbin)
+        
+        let newBinR = pRbin
+        let newBinG = pGbin
+        let newBinB = pBbin
+        //
+        // ASSIGN NEW PIXEL AT NEW INDEX
+        //
+        let decR = parseInt(newBinR, 2)
+        let decG = parseInt(newBinG, 2)
+        let decB = parseInt(newBinB, 2)
+        // overflow 255
+        let oldDecR = newImageData.data[i]
+        let oldDecG = newImageData.data[i + 1]
+        let oldDecB = newImageData.data[i + 2]
+        if (oldDecR + decR > 255) {
+            newImageData.data[i] = (oldDecR + decR - 256)
+            // console.log("overflow r: " + (oldDecR + decR) + "=>" + newImageData.data[i])
+        } else {
+            newImageData.data[i] += decR
+        }
+
+        if (oldDecG + decG > 255) {
+            newImageData.data[i + 1] = (oldDecG + decG - 256)
+            // console.log("overflow g: " + (oldDecG + decG) + "=>" + newImageData.data[i + 1])
+        } else {
+            newImageData.data[i + 1] += decG
+        }
+
+        if (oldDecB + decB > 255) {
+            newImageData.data[i + 2] = (oldDecB + decB - 256)
+            // console.log("overflow b: " + (oldDecB + decB) + "=>" + newImageData.data[i + 2])
+        } else {
+            newImageData.data[i + 2] += decB
+        }
+        newImageData.data[i + 3] = 255; // alpha
+        // LOGGING
+        // if (p == 1600) {
+        //     console.log("p = " + p)
+        //     console.log("INPUT")
+        //     console.log("pixel: (" + dec2bin(pixel[0]) + ", " + dec2bin(pixel[1]) + ", " + dec2bin(pixel[2]) + ")")
+        //     console.log("RESULT")
+        //     console.log("direction: " + d)
+        //     console.log("i = " + i)
+        //     console.log("ops:: " + "R: " + operationR + ", G: " + operationG + ", B: " + operationB)
+        //     console.log("payload: (" + newR + ", " + newG + ", " + newB + ")")
+        // }
+    }
+    newCtx.putImageData(newImageData, 0, 0)
+}
+
+function circRightShift(b) {
+    let shft = b.charAt(b.length - 1)
+    for (let i = 0; i < b.length - 1; i++) {
+        shft += b.charAt(i)
+    }
+    // console.log("bin: " + b + ", shifted: " + shft)
+    return shft
+}
+
+function bitReverse(b) {
+    let shft = ''
+    for (let i = b.length - 1; i >= 0; i--) {
+        shft += b.charAt(i)
+    }
+    // console.log("bin: " + b + ", shifted: " + shft)
+    return shft
+}
+
+
+function photoGoGoLegacy() {
+    // get original img
+    var canvas = document.getElementById("canvasId");
+    var ctx = canvas.getContext("2d");
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imgData.data;
+    // create new image
+    var newCanvas = document.getElementById("newCanvasId");
+    var newCtx = newCanvas.getContext("2d");
+    const newImageData = newCtx.createImageData(canvas.width, canvas.height);
+
+    const chunk = 4
+    const w = (canvas.width * chunk) // this is the array index chunk w
+    const h = canvas.height
+
+    for (let p = 0; p < w * h; p += chunk) {
+        let pixel = data.slice(p, p + 3)
+        // creating a vector from each pixel
+        // direction comes from the leftmost op-bits
+        //  1..2..3     p-w-1   p-w     p-w+1
+        //  4..0..5     p-1     p       p+1
+        //  6..7..8     p+w-1   p+w     p+w+1
+        // console.log(p)
+        // op and data are 2, left 0 buffered, bytes
+        let opR = opFromDec(pixel[0])
+        let dataR = dataFromDec(pixel[0])
+        let opG = opFromDec(pixel[1])
+        let dataG = dataFromDec(pixel[1])
+        let opB = opFromDec(pixel[2])
+        let dataB = dataFromDec(pixel[2])
+        let d = '' + opR.charAt(0) + opG.charAt(0) + opB.charAt(0)
+        let i = p
+
+        switch (d) {
+            case '000':
+                i = p - w - chunk;
+                break;
+            case '001':
+                i = p - w;
+                break;
+            case '010':
+                i = p - w + chunk;
+                break;
+            case '011':
+                i = p - chunk;
+                break;
+            case '100':
+                i = p + chunk;
+                break;
+            case '101':
+                i = p + w - chunk;
+                break;
+            case '110':
+                i = p + w
+                break;
+            case '111':
+                i = p + w + chunk;
+                break;
+        }
+        // Y-axis NEGATIVE ARRAY INDEX WRAP
+        if (i < 0) {
+            // check diagonals before reassignment
+            if (i == w - chunk) {
+                // top left -> bottom right
+                i = w * h - chunk
+            } else if (i == (w - chunk) - (w + chunk)) {
+                // top right -> bottom left
+                i = w * (h - 1)
+            } else {
+                console.log("y axis wrap min:: i:" + i + " < 0, i = " + w * h + " + " + i + " = " + (w * h + i))
+                i = w * h + i
+            }
+        }
+        if (i >= w * h) {
+            // check diagonals before reassignment
+            if (i == w * h) {
+                // bottom left -> top right
+                i = w
+            } else if (i == w * h + (w - chunk)) {
+                // bottom right -> top left
+                i = 0
+            } else {
+                console.log("y axis wrap max:: i:" + i + " >= " + (w * h) + ", i =(" + i + "-" + (w * h) + ")=" + (i - (w * h)))
+                i = i - (w * h)
+            }
+        }
+        // x-axis wrap
+        if (p % w == 0 & (i % w > p % w)) {
+            console.log("x axis wrap left:: i:" + i + " w " + w + " => " + (i + w))
+            i = i + w
+        }
+        if (p % w == w - chunk & (i % w < p % w)) {
+            console.log("x axis wrap right:: i:" + i + " w " + w + " => " + (i - w))
             i = i - w
         }
         //
